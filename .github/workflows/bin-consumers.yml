@@ -1,0 +1,42 @@
+name: Verify npm workspace binaries
+on:
+  push:
+    branches: [verify/npm-9875-owner-priority]
+permissions:
+  contents: read
+jobs:
+  consumers:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - uses: actions/setup-node@v4
+        if: runner.os == 'Windows'
+        with:
+          node-version: 22.18.0
+      - name: Reproduce the original Windows release
+        if: runner.os == 'Windows'
+        run: python hosted.py D:/b release
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.22.2
+      - name: Verify Windows shims in a short checkout
+        if: runner.os == 'Windows'
+        run: python hosted.py D:/b source
+      - name: Verify Linux links
+        if: runner.os == 'Linux'
+        run: python hosted.py /tmp/verify-npm-bins source
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: receipts-${{ runner.os }}
+          path: receipts/
